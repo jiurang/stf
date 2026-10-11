@@ -17,6 +17,7 @@ import {
 import {
   IconBolt
   , IconCamera
+  , IconCloud
   , IconFolderOpen
   , IconGauge
   , IconInfoCircle
@@ -37,6 +38,7 @@ import {usePageTitle} from '@/ui/page-title'
 import {stateColor} from '@/ui/device-state'
 import {ControlRedirect} from './ControlRedirect'
 import DeviceControlPanel from './device-control/DeviceControlPanel'
+import {maajxEnabled} from './panes/maajx/maajx-console'
 import type {PaneProps} from './types'
 import classes from './ControlPage.module.css'
 
@@ -92,6 +94,14 @@ export const panes: PaneDefinition[] = [
     , icon: IconInfoCircle
     , component: lazy(() => import('./panes/info/InfoPane'))
   }
+  // 只在服务端确实接了 maajx 单元时才多这一个标签页
+  , ...(maajxEnabled() ? [{
+    id: 'maajx'
+  , title: gettext('MaaJx')
+  , icon: IconCloud
+  , component: lazy(() => import('./panes/maajx/MaajxPane'))
+  , fill: true
+  }] : [])
 ]
 
 function DeviceLostModal({device, onReconnect, onLeave, onDismiss}: {

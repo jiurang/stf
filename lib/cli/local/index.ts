@@ -266,6 +266,24 @@ var builder = function(yargs: Argv) {
       describe: 'Publicly accessible URL to the websocket unit.'
     , type: 'string'
     })
+    .option('maajx-url', {
+      describe: 'Internal URL to a MaaJxApp cloud-control unit. Enables the ' +
+        'MaaJx pane on every device control page. The unit itself is started ' +
+        'separately with `stf maajx`, unless --maajx-token is given too.'
+    , type: 'string'
+    })
+    .option('maajx-port', {
+      describe: 'The port the MaaJxApp cloud-control unit should run at. ' +
+        'Ignored unless --maajx-token is given.'
+    , type: 'number'
+    , default: 7200
+    })
+    .option('maajx-token', {
+      describe: 'Shared token of the MaaJxApp cloud-control unit. Giving it ' +
+        'starts the unit here and wires the app unit to it, so one command ' +
+        'brings up the whole stack.'
+    , type: 'string'
+    })
     .epilog('Each option can be be overwritten with an environment variable ' +
       'by converting the option to uppercase, replacing dashes with ' +
       'underscores and prefixing it with `STF_LOCAL_` (e.g. ' +
@@ -287,6 +305,13 @@ var handler = function(argv: CommandArgv<typeof builder>) {
   // Each forked process waits for signals to stop, and so we run over the
   // default limit of 10. So, it's not a leak, but a refactor wouldn't hurt.
   process.setMaxListeners(20)
+
+  // 给令牌就连云控单元一起拉起来：app 单元的反代指到本机这个端口，
+  // 否则标签页不会出现 —— 前端只认 state.js 里的 maajxUrl，没有就是没接。
+  var maajxUrl = argv.maajxUrl
+  if (!maajxUrl && argv.maajxToken) {
+    maajxUrl = util.format('http://localhost:%d/', argv.maajxPort)
+  }
 
   function run() {
     var procs = [
@@ -365,6 +390,12 @@ var handler = function(argv: CommandArgv<typeof builder>) {
           if (argv.userProfileUrl) {
             extra.push('--user-profile-url', argv.userProfileUrl)
           }
+          if (maajxUrl) {
+            extra.push('--maajx-url', maajxUrl)
+          }
+          if (argv.maajxToken) {
+            extra.push('--maajx-token', argv.maajxToken)
+          }
           return extra
         })()))
 
@@ -441,6 +472,16 @@ var handler = function(argv: CommandArgv<typeof builder>) {
         , util.format('http://localhost:%d/', argv.storagePluginApkPort)
         ])
     ]
+
+    // 云控单元自己不吃 RethinkDB 与 ZeroMQ，但 app 单元的反代会打过来，
+    // 所以放在 poorxy 之前起，端口冲突或令牌不对都会立刻在日志里暴露。
+    if (argv.maajxToken) {
+      procs.push(procutil.fork(path.resolve(import.meta.dirname, '..'), [
+          'maajx'
+        , '--port', argv.maajxPort
+        , '--token', argv.maajxToken
+        ]))
+    }
 
     if ((argv.provider as string | false) !== false) {
       procs.push(procutil.fork(path.resolve(import.meta.dirname, '..'), [

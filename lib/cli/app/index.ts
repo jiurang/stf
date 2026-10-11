@@ -49,6 +49,16 @@ var builder = function(yargs: Argv) {
     , type: 'string'
     , demand: true
     })
+    .option('maajx-url', {
+      describe: 'Internal URL to the MaaJxApp cloud-control unit. Enables the ' +
+        'MaaJx pane on every device control page, proxied under /maajx.'
+    , type: 'string'
+    })
+    .option('maajx-token', {
+      describe: 'Shared token of the MaaJxApp cloud-control unit. Stays on ' +
+        'the server: the browser only ever gets a one-off console ticket.'
+    , type: 'string'
+    })
     .epilog('Each option can be be overwritten with an environment variable ' +
       'by converting the option to uppercase, replacing dashes with ' +
       'underscores and prefixing it with `STF_APP_` (e.g. ' +
@@ -63,6 +73,8 @@ var handler = function(argv: CommandArgv<typeof builder>) {
   , authUrl: argv.authUrl
   , websocketUrl: argv.websocketUrl
   , userProfileUrl: argv.userProfileUrl
+  , maajxUrl: argv.maajxUrl
+  , maajxToken: argv.maajxToken
   })
 }
 

@@ -100,7 +100,10 @@ export default function(options: Saml2AuthOptions) {
     done(null, user as Express.User)
   })
 
-  passport.use(mySamlStrategy)
+  // @node-saml/passport-saml 在自己的 node_modules 里带了一份 @types/express，
+  // 于是它的 Strategy 和 @types/passport 期望的 Strategy 拿着两个结构相同、
+  // 身份不同的 Request 类型。运行时就是同一个对象，只有类型身份对不上。
+  passport.use(mySamlStrategy as unknown as passport.Strategy)
 
   app.use(passport.authenticate('saml', {
     failureRedirect: '/auth/saml/'

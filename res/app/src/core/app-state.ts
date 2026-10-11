@@ -34,6 +34,9 @@ export interface AppConfig {
   websocketUrl: string
   stfVersion?: string
   userProfileUrl?: string
+
+  /** 同源反代前缀，服务端没配 maajx 单元时就没有这个字段 */
+  maajxUrl?: string
 }
 
 export interface AppState {
