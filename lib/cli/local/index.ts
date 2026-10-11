@@ -12,6 +12,9 @@ var command = 'local [serial..]'
 
 var describe = 'Start a complete local development environment.'
 
+// 云控单元与 app 单元之间的共享令牌，只活在这两个子进程之间，不进浏览器。
+// 想在外面单独跑 `stf maajx`，用那个命令自己的 --token，并让两边一致。
+var MAAJX_TOKEN = 'stf-local-maajx'
 var builder = function(yargs: Argv) {
   var os = require('os')
 
@@ -267,22 +270,17 @@ var builder = function(yargs: Argv) {
     , type: 'string'
     })
     .option('maajx-url', {
-      describe: 'Internal URL to a MaaJxApp cloud-control unit. Enables the ' +
-        'MaaJx pane on every device control page. The unit itself is started ' +
-        'separately with `stf maajx`, unless --maajx-token is given too.'
+      describe: 'URL the app unit proxies the MaaJxApp cloud-control unit ' +
+        'at, which enables the pane on every device control page. Point it ' +
+        'elsewhere to use a unit started separately with `stf maajx`.'
     , type: 'string'
     })
     .option('maajx-port', {
-      describe: 'The port the MaaJxApp cloud-control unit should run at. ' +
-        'Ignored unless --maajx-token is given.'
+      describe: 'The port the MaaJxApp cloud-control unit should run at. Each ' +
+        'device gets an adb reverse tunnel onto this same port, which is why ' +
+        'the app hardcodes it. Ignored unless --maajx-url is given too.'
     , type: 'number'
     , default: 7200
-    })
-    .option('maajx-token', {
-      describe: 'Shared token of the MaaJxApp cloud-control unit. Giving it ' +
-        'starts the unit here and wires the app unit to it, so one command ' +
-        'brings up the whole stack.'
-    , type: 'string'
     })
     .epilog('Each option can be be overwritten with an environment variable ' +
       'by converting the option to uppercase, replacing dashes with ' +
@@ -306,12 +304,10 @@ var handler = function(argv: CommandArgv<typeof builder>) {
   // default limit of 10. So, it's not a leak, but a refactor wouldn't hurt.
   process.setMaxListeners(20)
 
-  // 给令牌就连云控单元一起拉起来：app 单元的反代指到本机这个端口，
-  // 否则标签页不会出现 —— 前端只认 state.js 里的 maajxUrl，没有就是没接。
-  var maajxUrl = argv.maajxUrl
-  if (!maajxUrl && argv.maajxToken) {
-    maajxUrl = util.format('http://localhost:%d/', argv.maajxPort)
-  }
+  // 云控单元默认跟着一起起：app 单元的反代指到本机这个端口，否则设备
+  // 控制页不会出「大雄」标签 —— 前端只认 state.js 里的 maajxUrl。
+  var maajxUrl = argv.maajxUrl ||
+    util.format('http://localhost:%d/', argv.maajxPort)
 
   function run() {
     var procs = [
@@ -390,12 +386,8 @@ var handler = function(argv: CommandArgv<typeof builder>) {
           if (argv.userProfileUrl) {
             extra.push('--user-profile-url', argv.userProfileUrl)
           }
-          if (maajxUrl) {
-            extra.push('--maajx-url', maajxUrl)
-          }
-          if (argv.maajxToken) {
-            extra.push('--maajx-token', argv.maajxToken)
-          }
+          extra.push('--maajx-url', maajxUrl)
+          extra.push('--maajx-token', MAAJX_TOKEN)
           return extra
         })()))
 
@@ -474,14 +466,14 @@ var handler = function(argv: CommandArgv<typeof builder>) {
     ]
 
     // 云控单元自己不吃 RethinkDB 与 ZeroMQ，但 app 单元的反代会打过来，
-    // 所以放在 poorxy 之前起，端口冲突或令牌不对都会立刻在日志里暴露。
-    if (argv.maajxToken) {
-      procs.push(procutil.fork(path.resolve(import.meta.dirname, '..'), [
-          'maajx'
-        , '--port', argv.maajxPort
-        , '--token', argv.maajxToken
-        ]))
-    }
+    // 所以放在 poorxy 之前起，端口冲突会立刻在日志里暴露。
+    procs.push(procutil.fork(path.resolve(import.meta.dirname, '..'), [
+        'maajx'
+      , '--port', argv.maajxPort
+      , '--token', MAAJX_TOKEN
+      , '--adb-host', argv.adbHost
+      , '--adb-port', String(argv.adbPort)
+      ]))
 
     if ((argv.provider as string | false) !== false) {
       procs.push(procutil.fork(path.resolve(import.meta.dirname, '..'), [

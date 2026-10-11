@@ -178,7 +178,7 @@ export default function MaajxPane({device: stfDevice}: PaneProps) {
   return (
     <div className={classes.root}>
       <WidgetCard
-        title={t('MaaJx Cloud Control')}
+        title={t('控制器')}
         icon={IconDeviceMobile}
         color='grape'
         actions={(
@@ -273,7 +273,7 @@ export default function MaajxPane({device: stfDevice}: PaneProps) {
       </WidgetCard>
 
       <WidgetCard
-        title={t('Cloud Logs')}
+        title={t('日志')}
         icon={IconListDetails}
         color='gray'
         actions={(

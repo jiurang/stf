@@ -46,7 +46,7 @@ export interface Envelope {
   payload: Payload
 }
 
-/** 组包；deviceId 为空时不写这个字段（注册前的那几条消息用不上） */
+/** 组包；deviceId 为空时不写这个字段（只有整表广播那种不针对单台的消息） */
 export function envelope(type: string, deviceId: string, payload: Payload = {}) {
   var root: {type: string, deviceId?: string, payload?: Payload} = {type}
   if (deviceId) {

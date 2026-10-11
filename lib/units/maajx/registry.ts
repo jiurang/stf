@@ -3,7 +3,12 @@
 *
 * 记住谁在线、每台设备的状态摘要与任务清单，并负责把日志、帧、命令结果推给控制台。
 * 只做状态与投递，不做业务判断（业务都在安卓端的 CloudCommandHandler 里）。
-* 全部为内存态，进程重启即清空。
+*
+* 身份只有一条：adb 串号。STF 前端按串号对号入座，云控这边就没有第二个身份来源，
+* 也没有注册这一步 —— 设备连上来即认领。之前那套「自报姓名换 deviceId」的映射表
+* 会让任何拿到令牌的客户端冒名顶替别的机器，现在这条路整个删掉了。
+*
+* 全部为内存态，进程重启即清空：设备掉线重连即可，不必重新注册。
 */
 
 import {randomBytes} from 'crypto'
@@ -54,11 +59,10 @@ export interface DeviceStateView {
 }
 
 class Device {
-  public deviceId: string
+  /** adb 串号，同时充当设备 ID —— 没有第二套编号了 */
+  public serial: string
   public name = ''
   public model = ''
-  // `ro.serialno`：STF 侧按 adb 串号认设备，云控要认领到同一台就得报它
-  public serial = ''
   public androidVersion = ''
   public appVersion = ''
   public online = false
@@ -73,14 +77,18 @@ class Device {
   public socket: WebSocket | null = null
   public watchers = new Set<WebSocket>()
 
-  constructor(deviceId: string) {
-    this.deviceId = deviceId
+  constructor(serial: string) {
+    this.serial = serial
+  }
+
+  get deviceId() {
+    return this.serial
   }
 }
 
 function statePayload(device: Device): DeviceStateView {
   return {
-    deviceId: device.deviceId
+    deviceId: device.serial
   , running: device.running
   , status: device.status
   , entry: device.entry
@@ -93,7 +101,7 @@ function statePayload(device: Device): DeviceStateView {
 
 function deviceView(device: Device): DeviceView {
   return {
-    deviceId: device.deviceId
+    deviceId: device.serial
   , name: device.name
   , model: device.model
   , serial: device.serial
@@ -140,10 +148,6 @@ function randomId() {
 export class MaajxRegistry {
   private log: Logger
   private devices = new Map<string, Device>()
-  // serial -> deviceId：认领设备的首选依据，一台手机换名字也认得回来
-  private serialToId = new Map<string, string>()
-  // name -> deviceId：没有 serial 时的兜底，同型号多台时按名字认会认错
-  private nameToId = new Map<string, string>()
   private consoles = new Set<WebSocket>()
   // commandId -> 发起命令的控制台连接，回执到了也好送回去（它可能没在观看）
   private pending = new Map<string, WebSocket>()
@@ -153,107 +157,67 @@ export class MaajxRegistry {
   }
 
   // ------------------------------------------------------------------
-  // 注册与查询
-  // ------------------------------------------------------------------
-
-  registerDevice(input: Payload) {
-    var name = typeof input.name === 'string' ? input.name.trim() : ''
-    var serial = typeof input.serial === 'string' ? input.serial.trim() : ''
-    if (!name) {
-      name = 'unknown-' + randomId()
-    }
-    var existingId = serial ? this.serialToId.get(serial) : this.nameToId.get(name)
-    var device = existingId ? this.devices.get(existingId) ?? null : null
-    var reconnect = device !== null
-    if (!device) {
-      device = new Device('dev-' + randomId())
-      device.name = name
-      this.devices.set(device.deviceId, device)
-      this.nameToId.set(name, device.deviceId)
-    }
-    device.serial = serial
-    if (serial) {
-      this.serialToId.set(serial, device.deviceId)
-    }
-    if (typeof input.model === 'string') {
-      device.model = input.model
-    }
-    if (typeof input.androidVersion === 'string') {
-      device.androidVersion = input.androidVersion
-    }
-    if (typeof input.appVersion === 'string') {
-      device.appVersion = input.appVersion
-    }
-    device.lastSeenAt = Date.now()
-    this.log.info('device %s: %s serial=%s model=%s android=%s app=%s'
-      , reconnect ? 're-registered' : 'registered'
-      , device.deviceId
-      , device.serial || '-'
-      , device.model
-      , device.androidVersion
-      , device.appVersion)
-    this.broadcastDevices()
-    return device.deviceId
-  }
-
-  has(deviceId: string) {
-    return this.devices.has(deviceId)
-  }
-
-  /** 按 serial 找云控设备；STF 前端用它把当前 adb 设备对上号 */
-  bySerial(serial: string) {
-    var deviceId = this.serialToId.get(serial)
-    return deviceId ? this.devices.get(deviceId) ?? null : null
-  }
-
-  deviceViews() {
-    var list = Array.from(this.devices.values())
-    list.sort(function(a, b) {
-      return a.name.localeCompare(b.name) || a.deviceId.localeCompare(b.deviceId)
-    })
-    return list.map(deviceView)
-  }
-
-  // ------------------------------------------------------------------
   // 设备通道生命周期
   // ------------------------------------------------------------------
 
-  deviceAttached(deviceId: string, socket: WebSocket) {
-    var device = this.devices.get(deviceId)
+  /**
+  * 设备连上来了，按串号认领。第一次连上是登记，之后重连都认得回同一台。
+  * 返回 null 表示这个连接没法归属（没带串号），调用方该直接断开。
+  */
+  attachDevice(serial: string, socket: WebSocket) {
+    if (!serial) {
+      this.log.warn('device channel without a serial, dropping it')
+      return null
+    }
+    var device = this.devices.get(serial)
     if (!device) {
-      return false
+      device = new Device(serial)
+      this.devices.set(serial, device)
+      this.log.info('device %s registered', serial)
     }
     device.socket = socket
     device.online = true
     device.lastSeenAt = Date.now()
-    this.log.info('device %s channel attached', deviceId)
+    this.log.info('device %s channel attached', serial)
     this.broadcastDevices()
     this.broadcastState(device)
-    return true
+    return device
   }
 
-  deviceDetached(deviceId: string, socket: WebSocket) {
-    var device = this.devices.get(deviceId)
+  detachDevice(serial: string, socket: WebSocket) {
+    var device = this.devices.get(serial)
     if (!device || device.socket !== socket) {
       return
     }
     device.socket = null
     device.online = false
-    this.log.info('device %s channel detached', deviceId)
+    this.log.info('device %s channel detached', serial)
     this.broadcastDevices()
     this.broadcastState(device)
+  }
+
+  // ------------------------------------------------------------------
+  // 查询
+  // ------------------------------------------------------------------
+
+  deviceViews() {
+    var list = Array.from(this.devices.values())
+    list.sort(function(a, b) {
+      return a.serial.localeCompare(b.serial)
+    })
+    return list.map(deviceView)
   }
 
   // ------------------------------------------------------------------
   // 设备上行
   // ------------------------------------------------------------------
 
-  handleDeviceText(deviceId: string, text: string) {
+  handleDeviceText(serial: string, text: string) {
     var message = parse(text)
     if (!message) {
       return
     }
-    var device = this.devices.get(deviceId)
+    var device = this.devices.get(serial)
     if (!device) {
       return
     }
@@ -274,14 +238,14 @@ export class MaajxRegistry {
       this.onCommandResult(device, message.payload)
       break
     default:
-      this.log.warn('device %s sent unknown type %s', deviceId, message.type)
+      this.log.warn('device %s sent unknown type %s', serial, message.type)
       break
     }
   }
 
   /** 设备上行的 PNG 帧，只中继给正在观看该设备的控制台连接 */
-  onFrame(deviceId: string, frame: Buffer) {
-    var device = this.devices.get(deviceId)
+  onFrame(serial: string, frame: Buffer) {
+    var device = this.devices.get(serial)
     if (!device || frame.length === 0) {
       return
     }
@@ -291,12 +255,17 @@ export class MaajxRegistry {
   }
 
   onHello(device: Device, payload: Payload) {
-    if (typeof payload.model === 'string') {
-      device.model = payload.model
+    // 串号以握手时带的那条为准：那是 adb 给的。反过来这里只记一笔不符，
+    // 因为一旦允许它改写身份，前面那套「不冒名」就白做了。
+    var reported = typeof payload.serial === 'string' ? payload.serial.trim() : ''
+    if (reported && reported !== device.serial) {
+      this.log.warn('device %s reports serial %s, keeping the one from the handshake'
+        , device.serial
+        , reported)
     }
-    if (typeof payload.serial === 'string' && payload.serial) {
-      device.serial = payload.serial
-      this.serialToId.set(payload.serial, device.deviceId)
+    if (typeof payload.model === 'string' && payload.model) {
+      device.model = payload.model
+      device.name = device.name || payload.model
     }
     if (typeof payload.androidVersion === 'string') {
       device.androidVersion = payload.androidVersion
@@ -499,14 +468,14 @@ export class MaajxRegistry {
   }
 
   private broadcastState(device: Device) {
-    var text = envelope('state', device.deviceId, statePayload(device))
+    var text = envelope('state', device.serial, statePayload(device))
     this.consoles.forEach(function(socket) {
       safeSend(socket, text)
     })
   }
 
   private pushLogs(device: Device, lines: string[]) {
-    var text = envelope(LOGS, device.deviceId, {deviceId: device.deviceId, lines: lines})
+    var text = envelope(LOGS, device.serial, {deviceId: device.serial, lines: lines})
     device.watchers.forEach(function(socket) {
       safeSend(socket, text)
     })
@@ -515,8 +484,8 @@ export class MaajxRegistry {
   /** 回执送给观看该设备的连接，外加命令发起者（它可能没在观看） */
   private pushCommandResult(device: Device, commandId: string, command: string
     , ok: boolean, message: string, origin: WebSocket | null) {
-    var text = envelope(COMMAND_RESULT, device.deviceId, {
-      deviceId: device.deviceId
+    var text = envelope(COMMAND_RESULT, device.serial, {
+      deviceId: device.serial
     , commandId: commandId
     , command: command
     , ok: ok

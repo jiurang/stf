@@ -97,7 +97,7 @@ export const panes: PaneDefinition[] = [
   // 只在服务端确实接了 maajx 单元时才多这一个标签页
   , ...(maajxEnabled() ? [{
     id: 'maajx'
-  , title: gettext('MaaJx')
+  , title: gettext('大雄')
   , icon: IconCloud
   , component: lazy(() => import('./panes/maajx/MaajxPane'))
   , fill: true

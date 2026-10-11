@@ -80,6 +80,15 @@ export default function(options: PoorxyOptions) {
     })
   })
 
+  // WebSocket 升级：没有这一段，浏览器发往 7100 的 ws:// 会被直接掐掉。
+  // 照 web 那条兜底规则一律转给 app 单元，由它自己判断认不认（目前只有云控
+  // 的控制台通道会应答，其余的它会 destroy）。
+  server.on('upgrade', function(req, socket, head) {
+    proxy.ws(req, socket, head, {
+      target: options.appUrl
+    })
+  })
+
   server.listen(options.port)
   log.info('Listening on port %d', options.port)
 }
