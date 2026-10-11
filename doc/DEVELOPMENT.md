@@ -19,7 +19,7 @@ node build.mts compile
 # 3. 另开一个终端，起数据库
 rethinkdb
 
-# 4. 回项目目录，启动
-npm run local --maajx-token 
+# 4. 回项目目录，启动（大雄云控单元会跟着一起起）
+npm run local
 
 ```

@@ -107,6 +107,15 @@ services:
       stf app
       --auth-url http://${STF_PUBLIC_IP:-127.0.0.1}:7100/auth/mock/
       --websocket-url http://${STF_PUBLIC_IP:-127.0.0.1}:7100/
+      --maajx-url http://maajx:7100/
+      --maajx-token ${STF_MAAJX_TOKEN:?Set STF_MAAJX_TOKEN to the token the App presents}
+
+  # MaaJxApp 云控单元。不对外开端口：app 单元通过内网 /maajx 同源反代给前端，
+  # 共享令牌只留在 app 与本单元之间，不进浏览器。
+  maajx:
+    <<: *http
+    command: stf maajx --token ${STF_MAAJX_TOKEN:?Set STF_MAAJX_TOKEN to the token the App presents}
+    depends_on: []
 
   api:
     <<: *http
