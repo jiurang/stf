@@ -20,6 +20,7 @@ import {
 } from '@tabler/icons-react'
 import {appState} from '@/core/app-state'
 import {useTranslation} from '@/core/i18n'
+import {CopyButton} from '@/ui/CopyButton'
 import {NothingToShow} from '@/ui/NothingToShow'
 import {WidgetCard} from '@/ui/WidgetCard'
 import type {PaneProps} from '../../types'
@@ -152,6 +153,7 @@ export default function MaajxPane({device: stfDevice}: PaneProps) {
   const online = Boolean(device?.online)
   const tasks = state?.tasks || []
   const taskOptions = tasks.map((task) => ({value: task.entry, label: task.name || task.entry}))
+  const logText = useMemo(() => lines.join('\n'), [lines])
 
   // 新日志到达时贴到底部，跟 logcat 面板一个习惯
   useEffect(() => {
@@ -225,8 +227,8 @@ export default function MaajxPane({device: stfDevice}: PaneProps) {
           <Group gap='xs' align='flex-end' grow>
             <Select
               size='xs'
-              label={t('Task')}
-              placeholder={t('Task')}
+              label={t('任务')}
+              placeholder={t('任务')}
               data={taskOptions}
               value={entry}
               disabled={!online || taskOptions.length === 0}
@@ -239,7 +241,7 @@ export default function MaajxPane({device: stfDevice}: PaneProps) {
             />
             <NumberInput
               size='xs'
-              label={t('Screenshot short side')}
+              label={t('截图短边')}
               description={t('0 keeps the current value')}
               min={0}
               max={4096}
@@ -258,13 +260,13 @@ export default function MaajxPane({device: stfDevice}: PaneProps) {
                 }
               }}
             >
-              {t('Apply')}
+              {t('应用')}
             </Button>
           </Group>
 
           <Switch
             size='xs'
-            label={t('Receive logs from the cloud device')}
+            label={t('接收云设备日志')}
             checked={state?.logEnabled ?? true}
             disabled={!device}
             onChange={(event) => setLogEnabled(event.currentTarget.checked)}
@@ -277,15 +279,18 @@ export default function MaajxPane({device: stfDevice}: PaneProps) {
         icon={IconListDetails}
         color='gray'
         actions={(
-          <Button
-            size='compact-xs'
-            variant='default'
-            leftSection={<IconTrash size={14} />}
-            disabled={lines.length === 0}
-            onClick={() => setLines([])}
-          >
-            {t('Clear')}
-          </Button>
+          <Group gap='xs' wrap='nowrap'>
+            <CopyButton value={logText} />
+            <Button
+              size='compact-xs'
+              variant='default'
+              leftSection={<IconTrash size={14} />}
+              disabled={lines.length === 0}
+              onClick={() => setLines([])}
+            >
+              {t('Clear')}
+            </Button>
+          </Group>
         )}
       >
         {results.length > 0 && (
