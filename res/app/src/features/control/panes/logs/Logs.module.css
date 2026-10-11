@@ -1,7 +1,15 @@
 .root {
+  /*
+   * 次要文字统一走这一个 token，别各处直接用 Mantine 的 dimmed：
+   * dimmed 在暗色下是 #828282，压在 body #242424 上只有 4.04:1，
+   * 表头那层 #2e2e2e 上更只有 3.54:1 —— 12px 等宽字读起来是发灰的，没过 WCAG AA。
+   * 换成 gray-7 / dark-0 后浅色 9.0:1、暗色 10.6:1，两边都到 AAA。
+   */
+  --log-muted: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-0));
+
   display: flex;
   flex-direction: column;
-  gap: var(--mantine-spacing-xs);
+  gap: 6px;
   height: 100%;
   min-height: 320px;
 }
@@ -53,7 +61,8 @@
 .viewport {
   flex: 1 1 auto;
   min-height: 0;
-  overflow-x: hidden;
+  /* 面板被拖窄时横向滚动，而不是压扁列 */
+  overflow-x: auto;
   overflow-y: auto;
   overflow-anchor: none;
   font-family: var(--mantine-font-family-monospace);
@@ -79,7 +88,7 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--mantine-color-dimmed);
+  color: var(--log-muted);
   background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
   border-bottom: 1px solid var(--mantine-color-default-border);
 }
@@ -88,14 +97,26 @@
   position: relative;
 }
 
-.row {
-  height: var(--log-row-height);
-  line-height: var(--log-row-height);
+.rowWrapper {
   border-bottom: 1px solid light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-6));
 }
 
-.row:hover {
+.rowWrapper:hover {
   background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+}
+
+.rowWrapper[data-structured] .row {
+  cursor: pointer;
+}
+
+.rowWrapper[data-structured] .row:focus-visible {
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: -2px;
+}
+
+.row {
+  height: var(--log-row-height);
+  line-height: var(--log-row-height);
 }
 
 .cell {
@@ -106,7 +127,7 @@
 }
 
 .dim {
-  color: var(--mantine-color-dimmed);
+  color: var(--log-muted);
 }
 
 .number {
@@ -127,6 +148,137 @@
   color: light-dark(var(--mantine-color-red-8), var(--mantine-color-red-4));
 }
 
+/* ── JSON 折叠行：标题 + 几个关键字段，替掉整段 JSON 原文 ── */
+
+.summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.prefix {
+  min-width: 0;
+  max-width: 30%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--log-muted);
+}
+
+.chip {
+  flex: 0 0 auto;
+  padding: 0 6px;
+  border-radius: var(--mantine-radius-sm);
+  font-weight: 600;
+  background: light-dark(var(--mantine-color-teal-1), var(--mantine-color-dark-5));
+  /* teal-9 压 teal-1 只有 4.33:1，12px 粗体仍算普通文本、没过 AA，往黑里掺 10% 补到 5.1:1 */
+  color: light-dark(
+    color-mix(in srgb, var(--mantine-color-teal-9) 90%, black)
+    , var(--mantine-color-teal-3)
+  );
+}
+
+.pair {
+  display: inline-flex;
+  gap: 4px;
+  min-width: 0;
+}
+
+.pairKey {
+  flex: 0 0 auto;
+  color: var(--log-muted);
+}
+
+.pairValue {
+  min-width: 0;
+  max-width: 24ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  flex: 0 0 auto;
+  opacity: 0.45;
+  transform-origin: center;
+  transition: transform 150ms ease;
+}
+
+.chevron[data-open] {
+  transform: rotate(90deg);
+  opacity: 0.8;
+}
+
+/* ── 展开区：高度预算见 LogTable.tsx 的 jsonPanelHeader / jsonPanelPadding / jsonLineHeight ── */
+
+.detail {
+  padding: 6px 12px;
+  background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-8));
+  border-left: 2px solid var(--mantine-primary-color-filled);
+}
+
+.detailHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 22px;
+}
+
+.detailTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--log-muted);
+}
+
+.jsonGrid {
+  display: grid;
+  grid-template-columns: minmax(72px, 168px) minmax(0, 1fr);
+  column-gap: 12px;
+  margin: 0;
+}
+
+.jsonKey,
+.jsonValue {
+  height: var(--json-line-height);
+  line-height: var(--json-line-height);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jsonKey {
+  color: var(--log-muted);
+}
+
+.jsonValue[data-kind='string'] {
+  color: light-dark(var(--mantine-color-teal-9), var(--mantine-color-teal-3));
+}
+
+.jsonValue[data-kind='number'] {
+  /* orange-9 在浅色底上 4.08:1，同样往黑里掺 20% 补到 5.6:1 */
+  color: light-dark(
+    color-mix(in srgb, var(--mantine-color-orange-9) 80%, black)
+    , var(--mantine-color-orange-3)
+  );
+}
+
+.jsonValue[data-kind='boolean'] {
+  color: light-dark(var(--mantine-color-grape-9), var(--mantine-color-grape-3));
+}
+
+.jsonValue[data-kind='null'],
+.jsonValue[data-kind='object'],
+.jsonValue[data-kind='array'] {
+  color: var(--log-muted);
+  font-style: italic;
+}
+
 .empty {
   position: absolute;
   inset: 28px 0 0;
@@ -138,4 +290,11 @@
 
 .footer {
   flex: 0 0 auto;
+  min-height: 20px;
+}
+
+/* 跟表格里的次要文字同一个 token，底栏别又掉回 dimmed */
+.footerText {
+  font-size: var(--mantine-font-size-xs);
+  color: var(--log-muted);
 }

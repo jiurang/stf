@@ -3,13 +3,19 @@ import {
   defaultFilters
   , enhanceEntry
   , filterEntries
+  , flattenLogJson
   , formatLogs
+  , isKeyOnly
   , isValidDateFilter
   , levelNumbers
   , logFileName
+  , parseLogJson
+  , PRIORITY_INFO
+  , PRIORITY_VERBOSE
   , sanitizePid
   , sanitizeTid
   , stringMatcher
+  , summarizeLogJson
   , type LogcatMessage
 } from './logcat'
 
@@ -68,29 +74,110 @@ describe('stringMatcher', () => {
 })
 
 describe('filterEntries', () => {
-  it('keeps everything with the default filters', () => {
-    expect(filterEntries(entries, defaultFilters, true)).toBe(entries)
+  /** 默认压到 Warn 之后，测别的条件时得先把优先级放开 */
+  const all = {...defaultFilters, priority: PRIORITY_VERBOSE}
+
+  it('hides Info and below by default so the lines that matter stay on screen', () => {
+    expect(defaultFilters.priority).toBe(5)
+    expect(filterEntries(entries, defaultFilters, true).map((entry) => entry.id)).toEqual([3, 4])
+  })
+
+  it('brings everything back on the verbose floor', () => {
+    expect(filterEntries(entries, all, true)).toEqual(entries)
   })
 
   it('filters by minimum priority', () => {
-    const result = filterEntries(entries, {...defaultFilters, priority: 5}, true)
-    expect(result.map((entry) => entry.id)).toEqual([3, 4])
+    const result = filterEntries(entries, {...defaultFilters, priority: 6}, true)
+    expect(result.map((entry) => entry.id)).toEqual([4])
+  })
+
+  it('treats the key-only switch as Warn and above', () => {
+    expect(isKeyOnly(defaultFilters)).toBe(true)
+    expect(isKeyOnly({...defaultFilters, priority: 6})).toBe(true)
+    expect(isKeyOnly({...defaultFilters, priority: PRIORITY_INFO})).toBe(false)
+    expect(isKeyOnly(all)).toBe(false)
   })
 
   it('filters by tag, pid, tid and text', () => {
+    expect(filterEntries(entries, {...all, tag: 'window'}, true).map((entry) => entry.id)).toEqual([3])
+    expect(filterEntries(entries, {...all, pid: '77'}, true).map((entry) => entry.id)).toEqual([2])
+    expect(filterEntries(entries, {...all, tid: '78'}, true).map((entry) => entry.id)).toEqual([2])
+    expect(filterEntries(entries, {...all, message: 'error'}, true).map((entry) => entry.id)).toEqual([4])
+  })
+
+  it('still filters by tag alongside the default priority floor', () => {
     expect(filterEntries(entries, {...defaultFilters, tag: 'window'}, true).map((entry) => entry.id)).toEqual([3])
-    expect(filterEntries(entries, {...defaultFilters, pid: '77'}, true).map((entry) => entry.id)).toEqual([2])
-    expect(filterEntries(entries, {...defaultFilters, tid: '78'}, true).map((entry) => entry.id)).toEqual([2])
-    expect(filterEntries(entries, {...defaultFilters, message: 'error'}, true).map((entry) => entry.id)).toEqual([4])
   })
 
   it('ignores the native-only filters on the web platform', () => {
-    expect(filterEntries(entries, {...defaultFilters, tag: 'window'}, false)).toBe(entries)
+    expect(filterEntries(entries, {...all, tag: 'window'}, false)).toEqual(entries)
   })
 
   it('filters by time label', () => {
-    expect(filterEntries(entries, {...defaultFilters, date: '09:05'}, true)).toHaveLength(4)
-    expect(filterEntries(entries, {...defaultFilters, date: '10:'}, true)).toHaveLength(0)
+    expect(filterEntries(entries, {...all, date: '09:05'}, true)).toHaveLength(4)
+    expect(filterEntries(entries, {...all, date: '10:'}, true)).toHaveLength(0)
+  })
+})
+
+describe('parseLogJson', () => {
+  it('takes a message that is entirely json', () => {
+    expect(parseLogJson('{"task_id":7,"type":"Task.Succeeded"}')).toEqual({
+      prefix: ''
+      , value: {task_id: 7, type: 'Task.Succeeded'}
+    })
+  })
+
+  it('keeps the text in front of an embedded object', () => {
+    const parsed = parseLogJson('maafw notify: {"task_id":7,"type":"Task.Succeeded"}')
+    expect(parsed!.prefix).toBe('maafw notify:')
+    expect(parsed!.value).toEqual({task_id: 7, type: 'Task.Succeeded'})
+  })
+
+  it('ignores plain text, bare scalars and unparseable brackets', () => {
+    expect(parseLogJson('')).toBeNull()
+    expect(parseLogJson('[MaaFramework] node done')).toBeNull()
+    expect(parseLogJson('123')).toBeNull()
+    expect(parseLogJson('true')).toBeNull()
+    expect(parseLogJson('java.lang.Foo{a=1}')).toBeNull()
+  })
+})
+
+describe('summarizeLogJson', () => {
+  it('leads with the type and keeps the fields worth knowing', () => {
+    const parsed = parseLogJson('{"detail":"x","task_id":7,"type":"Task.Succeeded","entry":"daily","zzz":"dropped"}')!
+    const summary = summarizeLogJson(parsed)
+    expect(summary.title).toBe('Task.Succeeded')
+    expect(summary.pairs).toEqual([
+      {key: 'entry', value: 'daily'}
+      , {key: 'task_id', value: '7'}
+      , {key: 'detail', value: 'x'}
+    ])
+  })
+
+  it('keeps the text in front of the json in the summary', () => {
+    const summary = summarizeLogJson(parseLogJson('maafw notify: {"type":"Task.Succeeded"}')!)
+    expect(summary.prefix).toBe('maafw notify:')
+  })
+
+  it('summarizes arrays by size', () => {
+    const summary = summarizeLogJson(parseLogJson('[1,2,3]')!)
+    expect(summary.title).toBe('3 项')
+    expect(summary.pairs).toEqual([])
+  })
+})
+
+describe('flattenLogJson', () => {
+  it('keeps the nesting visible through the container rows', () => {
+    const parsed = parseLogJson('{"outer":{"inner":{"leaf":1}}}')!
+    const rows = flattenLogJson(parsed.value)
+    expect(rows.map((row) => `${row.depth}:${row.key}`)).toEqual(['0:outer', '1:inner', '2:leaf'])
+    expect(rows[0]!.value).toBe('{1}')
+    expect(rows[2]!.kind).toBe('number')
+  })
+
+  it('keeps objects past the depth limit as one json blob', () => {
+    const rows = flattenLogJson(parseLogJson('{"a":{"b":{"c":{"d":{"e":1}}}}}')!.value)
+    expect(rows[rows.length - 1]).toEqual({key: 'd', value: '{"e":1}', kind: 'object', depth: 3})
   })
 })
 

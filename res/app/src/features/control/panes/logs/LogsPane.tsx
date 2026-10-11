@@ -14,13 +14,25 @@ import {withErrorModal} from '@/ui/modals'
 import {usePlatform} from '@/ui/modes'
 import {NothingToShow} from '@/ui/NothingToShow'
 import type {PaneProps} from '../../types'
-import {filterEntries, isValidDateFilter, levelNumbers, type LogFilters} from './logcat'
+import {
+  filterEntries
+  , isKeyOnly
+  , isValidDateFilter
+  , KEY_ONLY_PRIORITY
+  , levelNumbers
+  , PRIORITY_VERBOSE
+  , type LogFilters
+} from './logcat'
 import {clearLogs, currentLogEntries, setLogFilter, startLogcat, stopLogcat, useDeviceLogs} from './logcat-store'
 import {LogTable} from './LogTable'
 import {openSaveLogModal} from './SaveLogModal'
 import classes from './Logs.module.css'
 
 const levelOptions = levelNumbers.map(({number, name}) => ({value: String(number), label: name}))
+
+function levelName(priority: number): string {
+  return levelNumbers.find((level) => level.number === priority)?.name || String(priority)
+}
 
 function EmptyState({total, started}: {total: number, started: boolean}) {
   const {t} = useTranslation()
@@ -82,74 +94,92 @@ const LogsToolbar = memo(function LogsToolbar({
   }
 
   return (
-    <Group className={`${classes.toolbar} logcat-filters-table`} gap='xs'>
-      <Tooltip label={t('Start/Stop Logging')}>
-        <Button
+    <>
+      <Group className={classes.toolbar} gap='xs'>
+        <Tooltip label={t('Start/Stop Logging')}>
+          <Button
+            size='xs'
+            variant={started ? 'filled' : 'light'}
+            {...(started ? {color: 'red'} : {})}
+            aria-pressed={started}
+            leftSection={started ? <span className={classes.live} /> : <IconPlayerPlayFilled size={14} />}
+            onClick={toggleLogging}
+          >
+            {started ? t('Stop') : t('Get')}
+          </Button>
+        </Tooltip>
+        <Tooltip label={t('Hide Info and below, which bury the lines that matter')}>
+          <Switch
+            size='xs'
+            label={t('只看关键')}
+            checked={isKeyOnly(filters)}
+            onChange={(event) => setLogFilter(
+              serial
+              , 'priority'
+              , event.currentTarget.checked ? KEY_ONLY_PRIORITY : PRIORITY_VERBOSE
+            )}
+          />
+        </Tooltip>
+        <Select
           size='xs'
-          variant={started ? 'filled' : 'light'}
-          {...(started ? {color: 'red'} : {})}
-          aria-pressed={started}
-          leftSection={started ? <span className={classes.live} /> : <IconPlayerPlayFilled size={14} />}
-          onClick={toggleLogging}
-        >
-          {started ? t('Stop') : t('Get')}
-        </Button>
-      </Tooltip>
-      <Select
-        size='xs'
-        w={112}
-        name='priority'
-        placeholder={t('Logcat Level')}
-        aria-label={t('Logcat Level')}
-        data={levelOptions}
-        value={String(filters.priority)}
-        allowDeselect={false}
-        onChange={(value) => value && setLogFilter(serial, 'priority', Number(value))}
-      />
-      {textFilter('date', t('Time'), 112)}
-      {native && textFilter('pid', t('PID'), 76)}
-      {native && textFilter('tid', t('TID'), 76)}
-      {native && textFilter('tag', t('Tag'), 140)}
-      {textFilter('message', t('Text'))}
-      <Group gap='xs' ml='auto' wrap='nowrap'>
-        <Switch
-          size='xs'
-          label={t('Auto Scroll')}
-          checked={follow}
-          onChange={(event) => onFollowChange(event.currentTarget.checked)}
+          w={112}
+          name='priority'
+          placeholder={t('Logcat Level')}
+          aria-label={t('Logcat Level')}
+          data={levelOptions}
+          value={String(filters.priority)}
+          allowDeselect={false}
+          onChange={(value) => value && setLogFilter(serial, 'priority', Number(value))}
         />
-        <Button
-          size='xs'
-          variant='default'
-          title={t('Clear')}
-          disabled={!hasEntries}
-          leftSection={<IconTrash size={14} />}
-          onClick={() => clearLogs(serial)}
-        >
-          {t('Clear')}
-        </Button>
-        <Button
-          size='xs'
-          variant='default'
-          title={t('Save Logs')}
-          disabled={!hasEntries}
-          leftSection={<IconDeviceFloppy size={14} />}
-          onClick={() => openSaveLogModal(serial, currentLogEntries(serial))}
-        >
-          {t('Save Logs')}
-        </Button>
+        <Group gap='xs' ml='auto' wrap='nowrap'>
+          <Switch
+            size='xs'
+            label={t('Auto Scroll')}
+            checked={follow}
+            onChange={(event) => onFollowChange(event.currentTarget.checked)}
+          />
+          <Button
+            size='xs'
+            variant='default'
+            title={t('Clear')}
+            disabled={!hasEntries}
+            leftSection={<IconTrash size={14} />}
+            onClick={() => clearLogs(serial)}
+          >
+            {t('Clear')}
+          </Button>
+          <Button
+            size='xs'
+            variant='default'
+            title={t('Save Logs')}
+            disabled={!hasEntries}
+            leftSection={<IconDeviceFloppy size={14} />}
+            onClick={() => openSaveLogModal(serial, currentLogEntries(serial))}
+          >
+            {t('Save Logs')}
+          </Button>
+        </Group>
       </Group>
-    </Group>
+      <Group className={classes.toolbar} gap='xs'>
+        {textFilter('date', t('Time'), 112)}
+        {native && textFilter('pid', t('PID'), 76)}
+        {native && textFilter('tid', t('TID'), 76)}
+        {native && textFilter('tag', t('Tag'), 140)}
+        {textFilter('message', t('Text'))}
+      </Group>
+    </>
   )
 })
 
 export default function LogsPane({device, control}: PaneProps) {
+  const {t} = useTranslation()
   const [platform] = usePlatform()
   const native = platform === 'native'
   const {serial} = device
   const {entries, started, filters} = useDeviceLogs(serial)
   const [follow, setFollow] = useState(true)
   const visible = useMemo(() => filterEntries(entries, filters, native), [entries, filters, native])
+  const hidden = entries.length - visible.length
 
   return (
     <div className={`${classes.root} stf-logs`}>
@@ -170,9 +200,30 @@ export default function LogsPane({device, control}: PaneProps) {
         onFollowChange={setFollow}
         empty={<EmptyState total={entries.length} started={started} />}
       />
-      <Text className={`${classes.footer} stf-logcat-counts`} size='xs' c='dimmed' ta='right'>
-        {visible.length} / {entries.length}
-      </Text>
+      <Group className={`${classes.footer} stf-logcat-counts`} gap={6} wrap='nowrap' justify='flex-end'>
+        {hidden > 0 && (
+          <>
+            <Text className={classes.footerText}>
+              {t('{{shown}} of {{total}} shown · {{hidden}} below {{level}} hidden', {
+                shown: visible.length.toLocaleString()
+                , total: entries.length.toLocaleString()
+                , hidden: hidden.toLocaleString()
+                , level: levelName(filters.priority)
+              })}
+            </Text>
+            <Button
+              size='compact-xs'
+              variant='subtle'
+              onClick={() => setLogFilter(serial, 'priority', PRIORITY_VERBOSE)}
+            >
+              {t('Show all')}
+            </Button>
+          </>
+        )}
+        {hidden === 0 && (
+          <Text className={classes.footerText}>{entries.length.toLocaleString()}</Text>
+        )}
+      </Group>
     </div>
   )
 }
