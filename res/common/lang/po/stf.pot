@@ -20,8 +20,37 @@ msgstr ""
 msgid "{{user.name}} groups number use"
 msgstr ""
 
-#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:245
+#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:243
 msgid "0 keeps the current value"
+msgstr ""
+
+#: res/app/src/features/control/ControlPage.tsx:100
+msgid "大雄"
+msgstr ""
+
+#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:267
+msgid "接收云设备日志"
+msgstr ""
+
+#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:242
+msgid "截图短边"
+msgstr ""
+
+#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:181
+msgid "控制器"
+msgstr ""
+
+#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:228
+#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:229
+msgid "任务"
+msgstr ""
+
+#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:276
+msgid "日志"
+msgstr ""
+
+#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:261
+msgid "应用"
 msgstr ""
 
 #: res/app/src/ui/modals.tsx:155
@@ -88,7 +117,7 @@ msgstr ""
 msgid "ADB Keys"
 msgstr ""
 
-#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:129
+#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:127
 msgid "ADB serial"
 msgstr ""
 
@@ -167,10 +196,6 @@ msgstr ""
 #: res/app/src/features/control/device-control/install-file.ts:14
 #: res/app/src/features/control/panes/dashboard/install/InstallCard.tsx:151
 msgid "App Upload"
-msgstr ""
-
-#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:263
-msgid "Apply"
 msgstr ""
 
 #: res/app/src/features/control/panes/dashboard/apps/AppsCard.tsx:69
@@ -325,7 +350,7 @@ msgstr ""
 #: res/app/src/features/control/panes/dashboard/shell/ShellCard.tsx:57
 #: res/app/src/features/control/panes/logs/LogsPane.tsx:124
 #: res/app/src/features/control/panes/logs/LogsPane.tsx:129
-#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:289
+#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:287
 #: res/app/src/features/control/panes/screenshots/ScreenshotsPane.tsx:84
 #: res/app/src/features/device-list/DeviceListPage.tsx:139
 #: res/app/src/ui/Pager.tsx:46
@@ -340,12 +365,8 @@ msgstr ""
 msgid "Close"
 msgstr ""
 
-#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:175
+#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:173
 msgid "Cloud control is not enabled on this STF instance."
-msgstr ""
-
-#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:278
-msgid "Cloud Logs"
 msgstr ""
 
 #: res/app/src/core/devices/enhance.ts:40
@@ -367,7 +388,7 @@ msgstr ""
 #: res/app/src/core/devices/enhance.ts:20
 #: res/app/src/core/devices/enhance.ts:7
 #: res/app/src/features/control/panes/info/InfoPane.tsx:234
-#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:192
+#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:190
 msgid "Connected"
 msgstr ""
 
@@ -596,7 +617,7 @@ msgstr ""
 
 #: res/app/src/core/devices/enhance.ts:19
 #: res/app/src/core/devices/enhance.ts:6
-#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:192
+#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:190
 #: res/app/src/ui/modals.tsx:127
 msgid "Disconnected"
 msgstr ""
@@ -931,7 +952,7 @@ msgstr ""
 msgid "Identifier"
 msgstr ""
 
-#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:203
+#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:201
 msgid "Idle"
 msgstr ""
 
@@ -1043,7 +1064,7 @@ msgstr ""
 msgid "Log In"
 msgstr ""
 
-#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:307
+#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:304
 msgid "Log reception is off for this device"
 msgstr ""
 
@@ -1061,19 +1082,11 @@ msgstr ""
 msgid "Logs"
 msgstr ""
 
-#: res/app/src/features/control/ControlPage.tsx:100
-msgid "MaaJx"
-msgstr ""
-
-#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:183
-msgid "MaaJx Cloud Control"
-msgstr ""
-
 #: res/app/src/features/control/panes/advanced/MaintenanceCard.tsx:23
 msgid "Maintenance"
 msgstr ""
 
-#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:136
+#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:134
 msgid "Make sure the app on this device has cloud control enabled and the serial matches adb."
 msgstr ""
 
@@ -1309,7 +1322,7 @@ msgstr ""
 
 #: res/app/src/core/devices/enhance.ts:21
 #: res/app/src/core/devices/enhance.ts:8
-#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:199
+#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:197
 msgid "Offline"
 msgstr ""
 
@@ -1323,7 +1336,7 @@ msgstr ""
 msgid "Once"
 msgstr ""
 
-#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:199
+#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:197
 msgid "Online"
 msgstr ""
 
@@ -1552,10 +1565,6 @@ msgstr ""
 msgid "Really delete this user?"
 msgstr ""
 
-#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:269
-msgid "Receive logs from the cloud device"
-msgstr ""
-
 #: res/app/src/features/control/device-control/DeviceMenuItems.tsx:34
 msgid "Recents"
 msgstr ""
@@ -1688,7 +1697,7 @@ msgstr ""
 msgid "Run this command to copy the key to your clipboard"
 msgstr ""
 
-#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:202
+#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:200
 msgid "Running"
 msgstr ""
 
@@ -1736,10 +1745,6 @@ msgstr ""
 msgid "Screenshot"
 msgstr ""
 
-#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:244
-msgid "Screenshot short side"
-msgstr ""
-
 #: res/app/src/features/control/ControlPage.tsx:69
 msgid "Screenshots"
 msgstr ""
@@ -1777,7 +1782,7 @@ msgstr ""
 msgid "Serial"
 msgstr ""
 
-#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:132
+#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:130
 msgid "Serials known to the cloud"
 msgstr ""
 
@@ -1871,7 +1876,7 @@ msgid "Standard"
 msgstr ""
 
 #: res/app/src/features/control/panes/dashboard/remote-debug/RemoteDebugCard.tsx:90
-#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:214
+#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:212
 msgid "Start"
 msgstr ""
 
@@ -1899,7 +1904,7 @@ msgstr ""
 #: res/app/src/features/control/panes/advanced/AdvancedInputCard.tsx:54
 #: res/app/src/features/control/panes/dashboard/remote-debug/RemoteDebugCard.tsx:79
 #: res/app/src/features/control/panes/logs/LogsPane.tsx:95
-#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:223
+#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:221
 msgid "Stop"
 msgstr ""
 
@@ -1938,11 +1943,6 @@ msgstr ""
 msgid "Take Screenshot"
 msgstr ""
 
-#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:230
-#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:231
-msgid "Task"
-msgstr ""
-
 #: res/app/src/features/control/panes/info/InfoPane.tsx:206
 msgid "Temperature"
 msgstr ""
@@ -1953,7 +1953,7 @@ msgstr ""
 msgid "Text"
 msgstr ""
 
-#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:134
+#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:132
 msgid "The cloud controller has no device registered yet."
 msgstr ""
 
@@ -2105,7 +2105,7 @@ msgstr ""
 msgid "The URI passed in is invalid."
 msgstr ""
 
-#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:126
+#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:124
 msgid "This device has not registered with the cloud controller yet."
 msgstr ""
 
@@ -2273,7 +2273,7 @@ msgstr ""
 msgid "Waiting for log entries"
 msgstr ""
 
-#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:308
+#: res/app/src/features/control/panes/maajx/MaajxPane.tsx:305
 msgid "Waiting for logs from the cloud device"
 msgstr ""
 
